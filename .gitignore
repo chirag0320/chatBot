@@ -1,0 +1,48 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# TypeScript build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# React (Vite/CRA) build outputs
+client/build/
+client/dist/
+
+# Server build outputs
+server/build/
+server/dist/
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
+# Environment files (keep secrets safe!)
+.env
+.env.*.local
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+
+# Optional: if you use Docker
+docker-compose.override.yml
+*.local.yml
