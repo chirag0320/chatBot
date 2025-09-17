@@ -1,123 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
-import { chat } from "../services/api";
-import "./Chat.css";
 import { useAuth } from "../context/AuthContext";
 import Message from "../components/Message";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-}
+import { useChat } from "../hooks/useChat";
+import "./Chat.css";
 
 const ChatPage: React.FC = () => {
   const { logout } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [aiTyping, setAiTyping] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [input, setInput] = useState("");
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const {
+    messages,
+    aiTyping,
+    loadingHistory,
+    chatContainerRef,
+    hasMore,
+    loadLatestMessages,
+    loadOlderMessages,
+    sendMessage,
+  } = useChat();
+
+  /** Load latest on mount */
   useEffect(() => {
     loadLatestMessages();
   }, []);
 
-  /** Load newest messages on mount */
-  const loadLatestMessages = async () => {
-    setLoadingHistory(true);
-    try {
-      const res = await chat.getHistory({ limit: 10 });
-      setMessages(res.data.messages);
-      setHasMore(res.data.hasMore);
-      scrollToBottom();
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const scrollToBottom = () => {
-    const container = chatContainerRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  };
-
-  /** Send user message and wait for AI */
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      role: "user",
-      content: input,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setAiTyping(true);
-
-    // ✅ scroll after sending
-    requestAnimationFrame(scrollToBottom);
-
-    try {
-      const res = await chat.sendMessage(input);
-      const aiMessage: Message = {
-        role: "assistant",
-        content: res.data.response,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-
-      // ✅ scroll after receiving
-      requestAnimationFrame(scrollToBottom);
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "⚠️ Error: Could not get a response from the AI.",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-
-      // ✅ also scroll after error response
-      requestAnimationFrame(scrollToBottom);
-    } finally {
-      setAiTyping(false);
-    }
-  };
-
-  /** Infinite scroll — load older messages */
-  const loadOlderMessages = async () => {
-    if (!hasMore || loadingHistory) return;
-
-    const oldestTimestamp = messages[0]?.timestamp;
-    setLoadingHistory(true);
-
-    const container = chatContainerRef.current;
-    const prevScrollHeight = container?.scrollHeight || 0;
-
-    try {
-      const res = await chat.getHistory({
-        limit: 10,
-        before: oldestTimestamp,
-      });
-
-      setMessages((prev) => [...res.data.messages, ...prev]); // prepend older msgs
-      setHasMore(res.data.hasMore);
-
-      requestAnimationFrame(() => {
-        if (container) {
-          container.scrollTop = container.scrollHeight - prevScrollHeight;
-        }
-      });
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
+  /** Infinite scroll */
   const handleScroll = () => {
     const container = chatContainerRef.current;
     if (container && container.scrollTop < 50) {
@@ -125,15 +33,27 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  /** Auto resize textarea */
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"; // reset height
-      textareaRef.current.style.height =
-        textareaRef.current.scrollHeight + "px";
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
     }
   }, [input]);
+
+  /** Handle enter key */
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    sendMessage(input);
+    setInput("");
+  };
 
   return (
     <div className="chat-page">
@@ -150,10 +70,9 @@ const ChatPage: React.FC = () => {
         onScroll={handleScroll}
       >
         {messages.map((msg, i) => (
-            <Message key={i} msg={msg} />
+          <Message key={i} msg={msg} />
         ))}
 
-        {/* Typing indicator for AI */}
         {aiTyping && (
           <div className="message-row assistant">
             <div className="message-bubble typing">
@@ -171,13 +90,14 @@ const ChatPage: React.FC = () => {
         )}
       </div>
 
-      <form className="message-input-form" onSubmit={handleSendMessage}>
+      <form className="message-input-form" onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
         <textarea
           ref={textareaRef}
           placeholder="Type a message"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={1}
+          onKeyDown={handleKeyDown}
         />
         <button type="submit" disabled={aiTyping}>
           ➤

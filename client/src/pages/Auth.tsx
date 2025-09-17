@@ -1,84 +1,81 @@
-// client/src/pages/Auth.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../services/api';
-import './Auth.css'; // We'll create this CSS file
+import { useAuthForm } from '../hooks/useAuthForm';
+import InputField from '../components/InputField';
+import './Auth.css';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // ✅ loader state
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { values, errors, handleChange, validate, setErrors } = useAuthForm(isLogin);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setErrors({});
+    if (!validate()) return;
+
+    setLoading(true); // start loader
     try {
-      if (isLogin) {
-        const res = await auth.login({ email, password });
-        login(res.data.token);
-        navigate('/chat');
-      } else {
-        const res = await auth.signup({ username, email, password });
-        login(res.data.token);
-        navigate('/chat');
-      }
+      const res = isLogin
+        ? await auth.login({ email: values.email, password: values.password })
+        : await auth.signup({ username: values.username, email: values.email, password: values.password });
+
+      login(res.data.token);
+      navigate('/chat');
     } catch (err: any) {
-      console.error(err);
-  
-      if (err.response?.status === 429) {
-        // Rate limit hit
-        setError(err.response?.data?.message || 'Too many attempts. Please wait.');
-      } else {
-        setError(err.response?.data?.message || 'Authentication failed');
-      }
+      const message =
+        err.response?.status === 429
+          ? err.response?.data?.message || 'Too many attempts. Please wait.'
+          : err.response?.data?.message || 'Authentication failed';
+      setErrors({ general: message });
+    } finally {
+      setLoading(false); // stop loader
     }
   };
-  
 
   return (
     <div className="auth-container">
       <h2>{isLogin ? 'Login' : 'Signup'}</h2>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {!isLogin && (
-          <div className="form-group">
-            <label htmlFor="username">Username:</label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required={!isLogin}
-            />
-          </div>
+          <InputField
+            label="Username"
+            value={values.username}
+            onChange={handleChange('username')}
+            error={errors.username}
+            required={!isLogin}
+          />
         )}
-        <div className="form-group">
-          <label htmlFor="email">Email:</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="password">Password:</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <p className="error-message">{error}</p>}
-        <button type="submit">{isLogin ? 'Login' : 'Signup'}</button>
+
+        <InputField
+          label="Email"
+          type="email"
+          value={values.email}
+          onChange={handleChange('email')}
+          error={errors.email}
+          required
+        />
+
+        <InputField
+          label="Password"
+          type="password"
+          value={values.password}
+          onChange={handleChange('password')}
+          error={errors.password}
+          required
+        />
+
+        {errors.general && <p className="error-message">{errors.general}</p>}
+
+        <button type="submit" disabled={loading}>
+          {loading ? <span className="loader"></span> : isLogin ? 'Login' : 'Signup'}
+        </button>
       </form>
+
       <p>
         {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
         <span className="toggle-auth" onClick={() => setIsLogin(!isLogin)}>
