@@ -14,7 +14,7 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/aisupport'
 
 app.use(express.json());
 app.use(cors({
-  origin: ["http://localhost:5173"],
+  origin: ["http://localhost:5173", 'https://aichatbot-chirag.netlify.app', 'http://localhost:3000'],
   credentials: true,
 }));
 
