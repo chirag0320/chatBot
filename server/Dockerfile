@@ -5,6 +5,8 @@ WORKDIR /app
 
 # Copy package files and install all dependencies (dev + prod)
 COPY package*.json ./
+COPY tsconfig*.json ./
+
 RUN npm install
 
 # Copy source code
@@ -20,6 +22,7 @@ WORKDIR /app
 
 # Copy only production dependencies
 COPY package*.json ./
+COPY tsconfig*.json ./
 RUN npm ci --omit=dev
 
 # Copy built files from the build stage
