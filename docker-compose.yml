@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: mongodb_ai_support
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ai_support_backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./server/.env
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/aisupport
+      PORT: 3001
+    depends_on:
+      - mongodb
+    volumes:
+      - ./server:/app:cached
+      - /app/node_modules
+    command: npm run start:dev # use start:dev for dev, serve for prod
+    restart: always
+  frontend:
+    build:
+      context: ./client
+    container_name: ai_support_frontend
+    ports:
+      - "5173:80"   # expose nginx on 5173
+    depends_on:
+      - backend
+  # frontend:
+  #   build:
+  #     context: ./client
+  #     dockerfile: Dockerfile
+  #   container_name: ai_support_frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     VITE_API_URL: http://backend:3001/api
+  #   depends_on:
+  #     - backend
+  #   volumes:
+  #     - ./client:/app:cached
+  #     - /app/node_modules
+  #   command: npm run dev -- --host 0.0.0.0
+  #   restart: always
+
+volumes:
+  mongo-data:

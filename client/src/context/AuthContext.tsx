@@ -1,6 +1,5 @@
 // client/src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext,type ReactNode } from 'react';
-import { auth } from '../services/api';
 
 interface AuthContextType {
   token: string | null;
