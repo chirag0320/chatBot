@@ -46,7 +46,6 @@ router.post('/send', auth, async (req: AuthRequest, res: Response) => {
 
     // Get AI response
     const aiResponseContent = await getAiResponse(aiMessages);
-    console.log("🚀 ~ aiResponseContent:", aiResponseContent)
 
     // Save AI response
     const aiChatMessage = new ChatMessage({
